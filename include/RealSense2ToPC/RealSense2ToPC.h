@@ -36,7 +36,20 @@ using namespace PointCloudTypes;
 #include <rtm/DataInPort.h>
 #include <rtm/DataOutPort.h>
 
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
+
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/io/grabber.h>
+#include <pcl/common/time.h>
+#include <pcl/io/io_exception.h>
+
+#include "real_sense_2_grabber.h"
+
 using namespace RTC;
+
+typedef pcl::PointXYZRGBA PointT;
 
 /*!
  * @class RealSense2ToPC
@@ -272,6 +285,8 @@ class RealSense2ToPC
   
   // </rtc-template>
 
+  boost::shared_ptr<pcl::RealSense2Grabber> m_interface;
+  void cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloud);
 };
 
 
