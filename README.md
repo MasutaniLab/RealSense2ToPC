@@ -15,7 +15,7 @@
   - [Point Cloud Library 1.8.1 AllinOne (VS2015 64bit用)](https://github.com/PointCloudLibrary/pcl/releases/tag/pcl-1.8.1)
   - [Intel® RealSense™ SDK 2.0](https://github.com/IntelRealSense/librealsense/)
 - [PCLのリポジトリで議論されているPR](https://github.com/PointCloudLibrary/pcl/pull/2214)を少し変更して使っています．
-- - CMakeでRealSense SDKを見つけるモジュール[`cmake/Modules/FindRealSense2.cmake`]は，
+- CMakeでRealSense SDKを見つけるモジュール[`cmake/Modules/FindRealSense2.cmake`]は，
 [INRIA Rennes Bretagne Atlantique](https://github.com/lagadic)の[vispに付属のもの](https://github.com/lagadic/visp/blob/master/cmake/FindRealSense2.cmake)を真似して作りました．
 - `pointcloud.idl` は，Geoffrey Biggs (gbiggs)氏の
 [RT-Components for the Point Cloud Library](https://github.com/gbiggs/rtcpcl/)
