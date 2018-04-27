@@ -209,8 +209,8 @@ void RealSense2ToPC::cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloud)
   float *dst_cloud = (float *)m_pc.data.get_buffer();
   for (unsigned int i = 0; i<cloud->points.size(); i++) {
 #if 1
-    dst_cloud[0] = -cloud->points[i].x;
-    dst_cloud[1] = -cloud->points[i].y;//rs2‚Å‚Í‚±‚±‚à”½“]HHH
+    dst_cloud[0] = cloud->points[i].x;
+    dst_cloud[1] = -cloud->points[i].y;
     dst_cloud[2] = -cloud->points[i].z;
 #else
     dst_cloud[0] = cloud->points[i].x;
