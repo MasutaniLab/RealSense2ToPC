@@ -44,6 +44,7 @@ using namespace PointCloudTypes;
 #include <pcl/io/grabber.h>
 #include <pcl/common/time.h>
 #include <pcl/io/io_exception.h>
+#include <pcl/common/transforms.h>
 
 #include "real_sense_2_grabber.h"
 
@@ -243,6 +244,42 @@ class RealSense2ToPC
 
   // Configuration variable declaration
   // <rtc-template block="config_declare">
+  /*!
+   * 
+   * - Name:  transX
+   * - DefaultValue: 0.0
+   */
+  double m_transX;
+  /*!
+   * 
+   * - Name:  transY
+   * - DefaultValue: 0.0
+   */
+  double m_transY;
+  /*!
+   * 
+   * - Name:  transZ
+   * - DefaultValue: 0.0
+   */
+  double m_transZ;
+  /*!
+   * 
+   * - Name:  rotX
+   * - DefaultValue: 0.0
+   */
+  double m_rotX;
+  /*!
+   * 
+   * - Name:  rotY
+   * - DefaultValue: 0.0
+   */
+  double m_rotY;
+  /*!
+   * 
+   * - Name:  rotZ
+   * - DefaultValue: 0.0
+   */
+  double m_rotZ;
 
   // </rtc-template>
 
@@ -287,6 +324,7 @@ class RealSense2ToPC
 
   boost::shared_ptr<pcl::RealSense2Grabber> m_interface;
   void cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloud);
+  Eigen::Affine3f m_transform;
 };
 
 

@@ -43,6 +43,7 @@ include_directories(${REALSENSE2_INCLUDE_DIRS})
 add_definitions(${OPENRTM_CFLAGS})
 add_definitions(${OMNIORB_CFLAGS})
 add_definitions(${PCL_DEFINITIONS})
+add_definitions(-DNOMINMAX)
 
 MAP_ADD_STR(comp_hdrs "../" comp_headers)
 

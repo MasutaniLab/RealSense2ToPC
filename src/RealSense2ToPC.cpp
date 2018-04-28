@@ -12,6 +12,7 @@
 #include <string>
 #include <iomanip>
 using namespace std;
+using namespace Eigen;
 
 
 // Module specification
@@ -29,6 +30,30 @@ static const char* realsense2topc_spec[] =
     "max_instance",      "1",
     "language",          "C++",
     "lang_type",         "compile",
+    // Configuration variables
+    "conf.default.transX", "0.0",
+    "conf.default.transY", "0.0",
+    "conf.default.transZ", "0.0",
+    "conf.default.rotX", "0.0",
+    "conf.default.rotY", "0.0",
+    "conf.default.rotZ", "0.0",
+
+    // Widget
+    "conf.__widget__.transX", "text",
+    "conf.__widget__.transY", "text",
+    "conf.__widget__.transZ", "text",
+    "conf.__widget__.rotX", "text",
+    "conf.__widget__.rotY", "text",
+    "conf.__widget__.rotZ", "text",
+    // Constraints
+
+    "conf.__type__.transX", "double",
+    "conf.__type__.transY", "double",
+    "conf.__type__.transZ", "double",
+    "conf.__type__.rotX", "double",
+    "conf.__type__.rotY", "double",
+    "conf.__type__.rotZ", "double",
+
     ""
   };
 // </rtc-template>
@@ -74,6 +99,13 @@ RTC::ReturnCode_t RealSense2ToPC::onInitialize()
   // </rtc-template>
 
   // <rtc-template block="bind_config">
+  // Bind variables and configuration variable
+  bindParameter("transX", m_transX, "0.0");
+  bindParameter("transY", m_transY, "0.0");
+  bindParameter("transZ", m_transZ, "0.0");
+  bindParameter("rotX", m_rotX, "0.0");
+  bindParameter("rotY", m_rotY, "0.0");
+  bindParameter("rotZ", m_rotZ, "0.0");
   // </rtc-template>
   
   return RTC::RTC_OK;
@@ -104,6 +136,13 @@ RTC::ReturnCode_t RealSense2ToPC::onShutdown(RTC::UniqueId ec_id)
 RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
 {
   RTC_INFO(("onActivated()"));
+  m_transform
+    = Translation3f(m_transX, m_transY, m_transZ)
+    *AngleAxisf(m_rotZ, Vector3f::UnitZ())
+    *AngleAxisf(m_rotY, Vector3f::UnitY())
+    *AngleAxisf(m_rotX+M_PI, Vector3f::UnitX());
+  cout << "m_transform:" << endl << m_transform.matrix() << endl;
+
   try {
     m_interface = boost::make_shared<pcl::RealSense2Grabber>();
     m_pc.type = "xyzrgb";
@@ -199,8 +238,10 @@ RTC::ReturnCode_t RealSense2ToPC::onRateChanged(RTC::UniqueId ec_id)
 }
 */
 
-void RealSense2ToPC::cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloud)
+void RealSense2ToPC::cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloudOrg)
 {
+  pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>());
+  pcl::transformPointCloud(*cloudOrg, *cloud, m_transform);
   setTimestamp(m_pc);
   m_pc.width = cloud->width;
   m_pc.height = cloud->height;
@@ -208,15 +249,9 @@ void RealSense2ToPC::cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloud)
   m_pc.data.length(m_pc.height*m_pc.row_step);
   float *dst_cloud = (float *)m_pc.data.get_buffer();
   for (unsigned int i = 0; i<cloud->points.size(); i++) {
-#if 1
-    dst_cloud[0] = cloud->points[i].x;
-    dst_cloud[1] = -cloud->points[i].y;
-    dst_cloud[2] = -cloud->points[i].z;
-#else
     dst_cloud[0] = cloud->points[i].x;
     dst_cloud[1] = cloud->points[i].y;
     dst_cloud[2] = cloud->points[i].z;
-#endif
     dst_cloud[3] = -cloud->points[i].rgb;
     dst_cloud += 4;
   }
