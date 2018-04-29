@@ -136,11 +136,14 @@ RTC::ReturnCode_t RealSense2ToPC::onShutdown(RTC::UniqueId ec_id)
 RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
 {
   RTC_INFO(("onActivated()"));
+  double radX = m_rotX*M_PI / 180;
+  double radY = m_rotY*M_PI / 180;
+  double radZ = m_rotZ*M_PI / 180;
   m_transform
     = Translation3f(m_transX, m_transY, m_transZ)
-    *AngleAxisf(m_rotZ, Vector3f::UnitZ())
-    *AngleAxisf(m_rotY, Vector3f::UnitY())
-    *AngleAxisf(m_rotX+M_PI, Vector3f::UnitX());
+    *AngleAxisf(radZ, Vector3f::UnitZ())
+    *AngleAxisf(radY, Vector3f::UnitY())
+    *AngleAxisf(radX+M_PI, Vector3f::UnitX());
   cout << "m_transform:" << endl << m_transform.matrix() << endl;
 
   try {
