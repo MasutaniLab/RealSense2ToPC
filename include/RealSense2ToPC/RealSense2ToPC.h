@@ -322,6 +322,9 @@ class RealSense2ToPC
   
   // </rtc-template>
 
+  pcl::PointCloud<PointT>::ConstPtr m_cloud;
+  boost::mutex m_mutex;
+  bool m_new;
   boost::shared_ptr<pcl::RealSense2Grabber> m_interface;
   void cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloud);
   Eigen::Affine3f m_transform;

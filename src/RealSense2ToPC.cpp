@@ -177,6 +177,7 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
     m_pc.is_bigendian = false;
     m_pc.point_step = 16;
     m_pc.is_dense = false;
+    m_new = false;
     boost::function<void(const pcl::PointCloud<PointT>::ConstPtr&)> f = boost::bind(&RealSense2ToPC::cloud_cb, this, _1);
     m_interface->registerCallback(f);
     m_interface->start();
@@ -200,9 +201,41 @@ RTC::ReturnCode_t RealSense2ToPC::onDeactivated(RTC::UniqueId ec_id)
   return RTC::RTC_OK;
 }
 
-
 RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
 {
+  boost::mutex::scoped_try_lock lock(m_mutex);
+  if (lock.owns_lock() && m_new) {
+    m_new = false;
+    pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>());
+    pcl::transformPointCloud(*m_cloud, *cloud, m_transform);
+    setTimestamp(m_pc);
+    m_pc.width = cloud->width;
+    m_pc.height = cloud->height;
+    m_pc.row_step = m_pc.point_step*m_pc.width;
+    m_pc.data.length(m_pc.height*m_pc.row_step);
+    float *dst_cloud = (float *)m_pc.data.get_buffer();
+    for (unsigned int i = 0; i<cloud->points.size(); i++) {
+      dst_cloud[0] = cloud->points[i].x;
+      dst_cloud[1] = cloud->points[i].y;
+      dst_cloud[2] = cloud->points[i].z;
+      dst_cloud[3] = -cloud->points[i].rgb;
+      dst_cloud += 4;
+    }
+    m_pcOut.write();
+
+    static int count = 0;
+    static double last = 0;
+
+    if (++count == 30)
+    {
+      double now = pcl::getTime();
+#if 1
+      RTC_INFO(("Average framerate: %lf Hz", double(count) / double(now - last)));
+#endif
+      count = 0;
+      last = now;
+    }
+  }
   return RTC::RTC_OK;
 }
 
@@ -241,39 +274,12 @@ RTC::ReturnCode_t RealSense2ToPC::onRateChanged(RTC::UniqueId ec_id)
 }
 */
 
-void RealSense2ToPC::cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloudOrg)
+void RealSense2ToPC::cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &ptr)
 {
-  pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>());
-  pcl::transformPointCloud(*cloudOrg, *cloud, m_transform);
-  setTimestamp(m_pc);
-  m_pc.width = cloud->width;
-  m_pc.height = cloud->height;
-  m_pc.row_step = m_pc.point_step*m_pc.width;
-  m_pc.data.length(m_pc.height*m_pc.row_step);
-  float *dst_cloud = (float *)m_pc.data.get_buffer();
-  for (unsigned int i = 0; i<cloud->points.size(); i++) {
-    dst_cloud[0] = cloud->points[i].x;
-    dst_cloud[1] = cloud->points[i].y;
-    dst_cloud[2] = cloud->points[i].z;
-    dst_cloud[3] = -cloud->points[i].rgb;
-    dst_cloud += 4;
-  }
-  m_pcOut.write();
-
-  static int count = 0;
-  static double last = 0;
-
-  if (++count == 30)
-  {
-    double now = pcl::getTime();
-#if 1
-    RTC_INFO(("Average framerate: %lf Hz", double(count) / double(now - last)));
-#endif
-    count = 0;
-    last = now;
-  }
+  boost::mutex::scoped_lock lock(m_mutex);
+  m_cloud = ptr->makeShared();
+  m_new = true;
 }
-
 
 extern "C"
 {
