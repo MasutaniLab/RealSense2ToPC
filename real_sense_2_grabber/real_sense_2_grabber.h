@@ -38,6 +38,9 @@
 #ifndef PCL_IO_REAL_SENSE_2_GRABBER_H
 #define PCL_IO_REAL_SENSE_2_GRABBER_H
 
+#include <thread>
+#include <mutex>
+
 #include <pcl/io/boost.h>
 #include <pcl/io/grabber.h>
 #include <pcl/point_cloud.h>
