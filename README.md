@@ -47,12 +47,12 @@ Windows用インストーラ`Intel.RealSense.SDK.exe` をダウンロードし�
 rtc.confに`corba.args: -ORBgiopMaxMsgSize`の設定が必要です．
 トップディレクトリのrtc.confでは`corba.args: -ORBgiopMaxMsgSize 20971520`
 にしています（デフォルト値の10倍）．
-- コンポーネントを起動するバッチファイル`RealSense2ToPC.bat`を用意しています．
+- コンポーネントを起動するバッチファイル[`RealSense2ToPC.bat`](RealSense2ToPC.bat)を用意しています．
   - ビルドディレクトリがトップ直下の`build`であることを仮定しています．
   - 環境変数`RTM_VC_CONFIG`を`Debug`か`Release`に設定してください．
 - 動作確認のための接続相手として，
 [PointCloudViewer](https://github.com/MasutaniLab/PointCloudViewer)
-を使ってください．
+を使ってください．そのためのバッチファイル[`TestRealSense2ToPC.bat`](TestRealSense2ToPC.bat)を用意しています．
 
 ### コンフィギュレーション
 - transX 座標変換の並進x成分 [m]
