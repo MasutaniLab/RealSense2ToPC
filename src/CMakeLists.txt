@@ -1,13 +1,16 @@
-set(comp_srcs RealSense2ToPC.cpp
-  ${PROJECT_SOURCE_DIR}/real_sense_2_grabber/real_sense_2_grabber.cpp
-  ${PROJECT_SOURCE_DIR}/real_sense_2_grabber/real_sense_2_grabber.h
-  )
+set(comp_srcs RealSense2ToPC.cpp )
 set(standalone_srcs RealSense2ToPCComp.cpp)
 
 set(CMAKE_MODULE_PATH 
   "${CMAKE_SOURCE_DIR}/cmake/Modules/" ${CMAKE_MODULE_PATH})
 find_package(REALSENSE2 REQUIRED)
 find_package(PCL 1.8 REQUIRED)
+
+if(${OPENRTM_VERSION_MAJOR} LESS 2)
+  set(OPENRTM_CFLAGS ${OPENRTM_CFLAGS} ${OMNIORB_CFLAGS})
+  set(OPENRTM_INCLUDE_DIRS ${OPENRTM_INCLUDE_DIRS} ${OMNIORB_INCLUDE_DIRS})
+  set(OPENRTM_LIBRARY_DIRS ${OPENRTM_LIBRARY_DIRS} ${OMNIORB_LIBRARY_DIRS})
+endif()
 
 if (DEFINED OPENRTM_INCLUDE_DIRS)
   string(REGEX REPLACE "-I" ";"
@@ -36,12 +39,9 @@ include_directories(${PROJECT_SOURCE_DIR}/real_sense_2_grabber)
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/idl)
 include_directories(${OPENRTM_INCLUDE_DIRS})
-include_directories(${OMNIORB_INCLUDE_DIRS})
 include_directories(${PCL_INCLUDE_DIRS})
 include_directories(${REALSENSE2_INCLUDE_DIRS})
-
 add_definitions(${OPENRTM_CFLAGS})
-add_definitions(${OMNIORB_CFLAGS})
 add_definitions(${PCL_DEFINITIONS})
 add_definitions(-DNOMINMAX)
 
@@ -55,7 +55,7 @@ add_library(${PROJECT_NAME} ${LIB_TYPE} ${comp_srcs}
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 set_source_files_properties(${ALL_IDL_SRCS} PROPERTIES GENERATED 1)
 if(NOT TARGET ALL_IDL_TGT)
-  add_custom_target(ALL_IDL_TGT)
+ add_custom_target(ALL_IDL_TGT)
 endif(NOT TARGET ALL_IDL_TGT)
 add_dependencies(${PROJECT_NAME} ALL_IDL_TGT)
 target_link_libraries(${PROJECT_NAME} ${OPENRTM_LIBRARIES}
@@ -68,9 +68,9 @@ target_link_libraries(${PROJECT_NAME}Comp ${OPENRTM_LIBRARIES}
 
 install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}Comp
     EXPORT ${PROJECT_NAME}
-    RUNTIME DESTINATION ${BIN_INSTALL_DIR} COMPONENT component
-    LIBRARY DESTINATION ${LIB_INSTALL_DIR} COMPONENT component
-    ARCHIVE DESTINATION ${LIB_INSTALL_DIR} COMPONENT component)
-install(EXPORT ${PROJECT_NAME}
-    DESTINATION ${LIB_INSTALL_DIR}/${PROJECT_NAME}
-    FILE ${PROJECT_NAME}Depends.cmake)
+    RUNTIME DESTINATION ${INSTALL_PREFIX} COMPONENT component
+    LIBRARY DESTINATION ${INSTALL_PREFIX} COMPONENT component
+    ARCHIVE DESTINATION ${INSTALL_PREFIX} COMPONENT component)
+
+install(FILES ${PROJECT_SOURCE_DIR}/RTC.xml DESTINATION ${INSTALL_PREFIX}
+        COMPONENT component)
