@@ -15,7 +15,7 @@
   - [Intel® RealSense™ SDK 2.0](https://github.com/IntelRealSense/librealsense/)
 - CMakeでRealSense SDKを見つけるモジュール[`cmake/Modules/FindRealSense2.cmake`](cmake/Modules/FindRealSense2.cmake)は，
 [INRIA Rennes Bretagne Atlantique](https://github.com/lagadic)の[vispに付属のもの](https://github.com/lagadic/visp/blob/master/cmake/FindRealSense2.cmake)を真似して作りました．
-- `pointcloud.idl` は，Geoffrey Biggs (gbiggs)氏の
+- [`pointcloud.idl`](idl/pointcloud.idl) は，Geoffrey Biggs (gbiggs)氏の
 [RT-Components for the Point Cloud Library](https://github.com/gbiggs/rtcpcl/)
 に[含まれているもの](https://github.com/gbiggs/rtcpcl/blob/master/pc_type/pointcloud.idl)
 をそのまま使っています．
