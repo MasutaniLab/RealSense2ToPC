@@ -36,23 +36,7 @@ using namespace PointCloudTypes;
 #include <rtm/DataInPort.h>
 #include <rtm/DataOutPort.h>
 
-#include <boost/shared_ptr.hpp>
 #include <Eigen/Geometry>
-
-#ifdef PCL
-#include <boost/make_shared.hpp>
-
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/io/grabber.h>
-#include <pcl/common/time.h>
-#include <pcl/io/io_exception.h>
-#include <pcl/common/transforms.h>
-
-typedef pcl::PointXYZRGB PointT;
-
-#endif
-
 #include <librealsense2/rs.hpp>
 
 using namespace RTC;
@@ -341,6 +325,9 @@ class RealSense2ToPC
    rs2::pipeline m_pipe;
    bool m_coordinateTransformation;
    Eigen::Affine3f m_transform;
+   int m_fpsCounter;
+   std::chrono::steady_clock::time_point m_steadyStart;
+   std::chrono::steady_clock::time_point m_steadyEnd;
 };
 
 

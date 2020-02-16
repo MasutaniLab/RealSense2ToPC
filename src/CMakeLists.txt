@@ -4,7 +4,8 @@ set(standalone_srcs RealSense2ToPCComp.cpp)
 set(CMAKE_MODULE_PATH 
   "${CMAKE_SOURCE_DIR}/cmake/Modules/" ${CMAKE_MODULE_PATH})
 find_package(REALSENSE2 REQUIRED)
-find_package(PCL 1.8 REQUIRED)
+
+set(EIGEN_DIR "$ENV{PCL_ROOT}/3rdParty/Eigen/eigen3" CACHE PATH "Directory of Eigen")
 
 if(${OPENRTM_VERSION_MAJOR} LESS 2)
   set(OPENRTM_CFLAGS ${OPENRTM_CFLAGS} ${OMNIORB_CFLAGS})
@@ -35,14 +36,12 @@ endif (DEFINED OPENRTM_LIBRARIES)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME})
-include_directories(${PROJECT_SOURCE_DIR}/real_sense_2_grabber)
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/idl)
 include_directories(${OPENRTM_INCLUDE_DIRS})
-include_directories(${PCL_INCLUDE_DIRS})
+include_directories(${EIGEN_DIR})
 include_directories(${REALSENSE2_INCLUDE_DIRS})
 add_definitions(${OPENRTM_CFLAGS})
-add_definitions(${PCL_DEFINITIONS})
 add_definitions(-DNOMINMAX)
 
 MAP_ADD_STR(comp_hdrs "../" comp_headers)
@@ -59,12 +58,12 @@ if(NOT TARGET ALL_IDL_TGT)
 endif(NOT TARGET ALL_IDL_TGT)
 add_dependencies(${PROJECT_NAME} ALL_IDL_TGT)
 target_link_libraries(${PROJECT_NAME} ${OPENRTM_LIBRARIES}
-  ${PCL_LIBRARIES} ${REALSENSE2_LIBRARIES})
+  ${REALSENSE2_LIBRARIES})
 
 add_executable(${PROJECT_NAME}Comp ${standalone_srcs}
   ${comp_srcs} ${comp_headers} ${ALL_IDL_SRCS})
 target_link_libraries(${PROJECT_NAME}Comp ${OPENRTM_LIBRARIES}
-  ${PCL_LIBRARIES} ${REALSENSE2_LIBRARIES})
+  ${REALSENSE2_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}Comp
     EXPORT ${PROJECT_NAME}

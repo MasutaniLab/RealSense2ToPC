@@ -7,8 +7,6 @@
  * $Id$
  */
 
-#define PCL
-
 #define _USE_MATH_DEFINES
 #include "RealSense2ToPC.h"
 #include <iostream>
@@ -18,99 +16,6 @@ using namespace std;
 using namespace Eigen;
 
 #define print(x) cout << #x " = " << x << endl
-
-#ifdef PCL
-typedef pcl::PointXYZRGB RGB_Cloud;
-typedef pcl::PointCloud<RGB_Cloud> point_cloud;
-typedef point_cloud::Ptr cloud_pointer;
-typedef point_cloud::Ptr prevCloud;
-
-//======================================================
-// RGB Texture
-// - Function is utilized to extract the RGB data from
-// a single point return R, G, and B values. 
-// Normals are stored as RGB components and
-// correspond to the specific depth (XYZ) coordinate.
-// By taking these normals and converting them to
-// texture coordinates, the RGB components can be
-// "mapped" to each individual point (XYZ).
-//======================================================
-std::tuple<int, int, int> RGB_Texture(rs2::video_frame texture, rs2::texture_coordinate Texture_XY)
-{
-  // Get Width and Height coordinates of texture
-  int width = texture.get_width();  // Frame width in pixels
-  int height = texture.get_height(); // Frame height in pixels
-
-                                     // Normals to Texture Coordinates conversion
-  int x_value = min(max(int(Texture_XY.u * width + .5f), 0), width - 1);
-  int y_value = min(max(int(Texture_XY.v * height + .5f), 0), height - 1);
-
-  int bytes = x_value * texture.get_bytes_per_pixel();   // Get # of bytes per pixel
-  int strides = y_value * texture.get_stride_in_bytes(); // Get line width in bytes
-  int Text_Index = (bytes + strides);
-
-  const auto New_Texture = reinterpret_cast<const uint8_t*>(texture.get_data());
-
-  // RGB components to save in tuple
-  int NT1 = New_Texture[Text_Index];
-  int NT2 = New_Texture[Text_Index + 1];
-  int NT3 = New_Texture[Text_Index + 2];
-
-  return std::tuple<int, int, int>(NT1, NT2, NT3);
-}
-
-//===================================================
-//  PCL_Conversion
-// - Function is utilized to fill a point cloud
-//  object with depth and RGB data from a single
-//  frame captured using the Realsense.
-//=================================================== 
-cloud_pointer PCL_Conversion(const rs2::points& points, const rs2::video_frame& color)
-{
-
-  // Object Declaration (Point Cloud)
-  cloud_pointer cloud(new point_cloud);
-
-  // Declare Tuple for RGB value Storage (<t0>, <t1>, <t2>)
-  std::tuple<uint8_t, uint8_t, uint8_t> RGB_Color;
-
-  //================================
-  // PCL Cloud Object Configuration
-  //================================
-  // Convert data captured from Realsense camera to Point Cloud
-  auto sp = points.get_profile().as<rs2::video_stream_profile>();
-
-  cloud->width = static_cast<uint32_t>(sp.width());
-  cloud->height = static_cast<uint32_t>(sp.height());
-  cloud->is_dense = false;
-  cloud->points.resize(points.size());
-
-  auto Texture_Coord = points.get_texture_coordinates();
-  auto Vertex = points.get_vertices();
-
-  // Iterating through all points and setting XYZ coordinates
-  // and RGB values
-  for (int i = 0; i < points.size(); i++) {
-    //===================================
-    // Mapping Depth Coordinates
-    // - Depth data stored as XYZ values
-    //===================================
-    cloud->points[i].x = Vertex[i].x;
-    cloud->points[i].y = Vertex[i].y;
-    cloud->points[i].z = Vertex[i].z;
-
-    // Obtain color texture for specific point
-    RGB_Color = RGB_Texture(color, Texture_Coord[i]);
-
-    // Mapping Color (BGR due to Camera Model)
-    cloud->points[i].r = get<2>(RGB_Color); // Reference tuple<2>
-    cloud->points[i].g = get<1>(RGB_Color); // Reference tuple<1>
-    cloud->points[i].b = get<0>(RGB_Color); // Reference tuple<0>
-  }
-
-  return cloud; // PCL RGB Point Cloud generated
-}
-#endif
 
 // Module specification
 // <rtc-template block="module_spec">
@@ -303,6 +208,8 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
     m_pc.is_bigendian = false;
     m_pc.point_step = 16;
     m_pc.is_dense = false;
+    m_steadyStart = chrono::steady_clock::now();
+    m_fpsCounter = 0;
   } catch (const rs2::error & e) {
     RTC_ERROR((("RealSense error calling " + e.get_failed_function() + "(" + e.get_failed_args() + "):").c_str()));
     RTC_ERROR(("    %s", e.what()));
@@ -338,25 +245,7 @@ RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
     rs2::pointcloud pc;
     pc.map_to(colorFrame);
     rs2::points points = pc.calculate(depthFrame);
-#ifdef PCL
-    pcl::PointCloud<PointT>::Ptr cloud = PCL_Conversion(points, colorFrame);
-    setTimestamp(m_pc);
-    if (m_coordinateTransformation) {
-      pcl::transformPointCloud(*cloud, *cloud, m_transform);
-    }
-    m_pc.width = cloud->width;
-    m_pc.height = cloud->height;
-    m_pc.row_step = m_pc.point_step*m_pc.width;
-    m_pc.data.length(m_pc.height*m_pc.row_step);
-    float *dst_cloud = (float *)m_pc.data.get_buffer();
-    for (unsigned int i = 0; i<cloud->points.size(); i++) {
-      dst_cloud[0] = cloud->points[i].x;
-      dst_cloud[1] = -cloud->points[i].y;
-      dst_cloud[2] = -cloud->points[i].z;
-      dst_cloud[3] = cloud->points[i].rgb;
-      dst_cloud += 4;
-    }
-#else
+
     rs2::video_stream_profile sp = points.get_profile().as<rs2::video_stream_profile>();
     m_pc.width = static_cast<uint32_t>(sp.width());
     m_pc.height = static_cast<uint32_t>(sp.height());
@@ -374,20 +263,39 @@ RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
     float *dst_cloud = (float *)m_pc.data.get_buffer();
 
     for (int i = 0; i < points.size(); i++) {
+      //XYZ
+      //座標変換の前にy軸とz軸を入れ替え．
+      Vector3f tmp(vertices[i].x, -vertices[i].y, -vertices[i].z);
+      //座標変換
+      if (m_coordinateTransformation) {
+        tmp = m_transform*tmp;
+      }
+
+      //RGB
       rs2::texture_coordinate uv = textureCoordinates[i];
       int u = min(max(int(uv.u * width + .5f), 0), width - 1);
       int v = min(max(int(uv.v * height + .5f), 0), height - 1);
       int index = u*bytesPerPixel + v*stridesInBytes;
-      float rgb = static_cast<float>((texture[index] << 16) | (texture[index+1] << 8) | texture[index+2]);
+      uint32_t ui = (texture[index + 2] << 16) | (texture[index + 1] << 8) | texture[index];
+      float rgb = *reinterpret_cast<float *>(&ui);
 
-      dst_cloud[0] = vertices[i].x;
-      dst_cloud[1] = vertices[i].y;
-      dst_cloud[2] = vertices[i].z;
+      dst_cloud[0] = tmp(0);
+      dst_cloud[1] = tmp(1);
+      dst_cloud[2] = tmp(2);
       dst_cloud[3] = rgb;
       dst_cloud += 4;
     }
-#endif
+
     m_pcOut.write();
+
+    m_fpsCounter++;
+    m_steadyEnd = chrono::steady_clock::now();
+    float timeSec = std::chrono::duration<double>(m_steadyEnd - m_steadyStart).count();
+    if (timeSec >= 1) {
+      RTC_INFO(("%f fps", m_fpsCounter / timeSec));
+      m_steadyStart = m_steadyEnd;
+      m_fpsCounter = 0;
+    }
 
   } catch (const rs2::error & e) {
     RTC_ERROR((("RealSense error calling " + e.get_failed_function() + "(" + e.get_failed_args() + "):").c_str()));
