@@ -67,7 +67,6 @@ rtc.confに`corba.args: -ORBgiopMaxMsgSize`の設定が必要です．
 ## 既知の問題・TODO
 
 - type "xyzrgb"しか出力できません．
-- 深度と色の画素数が同じ場合にしか動作しません．
 - キャリブレーション．
 
 ## 覚書（2020/2/16）
