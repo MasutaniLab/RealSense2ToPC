@@ -18,8 +18,12 @@ call ..\PointCloudViewer\PointCloudViewer.bat
 set s=/localhost/RealSense2ToPC0.rtc
 set v=/localhost/PointCloudViewer0.rtc
 
-:時間待ち
-timeout 5
+:コンポーネント起動待ち
+:rtls
+echo %s%の起動待ち
+timeout 1 /nobreak > nul
+rtls %s% > nul 2>&1
+if errorlevel 1 goto rtls
 
 :接続
 rtcon %s%:pc %v%:pc 

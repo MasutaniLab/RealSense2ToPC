@@ -328,6 +328,7 @@ class RealSense2ToPC
    int m_fpsCounter;
    std::chrono::steady_clock::time_point m_steadyStart;
    std::chrono::steady_clock::time_point m_steadyEnd;
+   rs2::align *m_palign;
 };
 
 

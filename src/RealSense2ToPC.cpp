@@ -75,7 +75,8 @@ static const char* realsense2topc_spec[] =
 RealSense2ToPC::RealSense2ToPC(RTC::Manager* manager)
     // <rtc-template block="initializer">
   : RTC::DataFlowComponentBase(manager),
-    m_pcOut("pc", m_pc)
+    m_pcOut("pc", m_pc),
+    m_palign(nullptr)
 
     // </rtc-template>
 {
@@ -179,6 +180,12 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
 
     rs2::pipeline_profile profile = m_pipe.start(cfg);
 
+    if (wc == wd && hc == hd) {
+      m_palign = nullptr;
+    } else {
+      m_palign = new rs2::align(RS2_STREAM_DEPTH);
+    }
+
     m_pc.type = "xyzrgb";
     m_pc.fields.length(6);
     m_pc.fields[0].name = "x";
@@ -221,6 +228,7 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
     RTC_ERROR(("An exception occurred in onActivated()"));
     return RTC::RTC_ERROR;
   }
+  RTC_INFO(("onActivated() done"));
   return RTC::RTC_OK;
 }
 
@@ -229,6 +237,7 @@ RTC::ReturnCode_t RealSense2ToPC::onDeactivated(RTC::UniqueId ec_id)
 {
   RTC_INFO(("onDeactivated()"));
   m_pipe.stop();
+  delete m_palign;
   return RTC::RTC_OK;
 }
 
@@ -239,9 +248,17 @@ RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
     if (!m_pipe.poll_for_frames(&frameset)) {
       return RTC::RTC_OK;
     }
-    rs2::depth_frame depthFrame = frameset.get_depth_frame();
-    rs2::video_frame colorFrame = frameset.get_color_frame();
     setTimestamp(m_pc);
+
+    rs2::frameset aligned_frameset;
+    if (m_palign == nullptr) {
+      aligned_frameset = frameset;
+    } else {
+      aligned_frameset = m_palign->process(frameset);
+    }
+
+    rs2::depth_frame depthFrame = aligned_frameset.get_depth_frame();
+    rs2::video_frame colorFrame = aligned_frameset.get_color_frame();
     rs2::pointcloud pc;
     pc.map_to(colorFrame);
     rs2::points points = pc.calculate(depthFrame);
