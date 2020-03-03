@@ -75,8 +75,8 @@ static const char* realsense2topc_spec[] =
 RealSense2ToPC::RealSense2ToPC(RTC::Manager* manager)
     // <rtc-template block="initializer">
   : RTC::DataFlowComponentBase(manager),
-    m_pcOut("pc", m_pc),
-    m_palign(nullptr)
+    m_modeIn("mode", m_mode),
+    m_pcOut("pc", m_pc)
 
     // </rtc-template>
 {
@@ -97,6 +97,7 @@ RTC::ReturnCode_t RealSense2ToPC::onInitialize()
   // Registration: InPort/OutPort/Service
   // <rtc-template block="registration">
   // Set InPort buffers
+  addInPort("mode", m_modeIn);
   
   // Set OutPort buffer
   addOutPort("pc", m_pcOut);
@@ -217,6 +218,7 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
     m_pc.is_dense = false;
     m_steadyStart = chrono::steady_clock::now();
     m_fpsCounter = 0;
+    m_running = true;
   } catch (const rs2::error & e) {
     RTC_ERROR((("RealSense error calling " + e.get_failed_function() + "(" + e.get_failed_args() + "):").c_str()));
     RTC_ERROR(("    %s", e.what()));
@@ -243,84 +245,102 @@ RTC::ReturnCode_t RealSense2ToPC::onDeactivated(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
 {
-  try {
-    rs2::frameset frameset;
-    if (!m_pipe.poll_for_frames(&frameset)) {
-      return RTC::RTC_OK;
-    }
-    setTimestamp(m_pc);
-
-    rs2::frameset aligned_frameset;
-    if (m_palign == nullptr) {
-      aligned_frameset = frameset;
+  if (m_modeIn.isNew()) {
+    m_modeIn.read();
+    string s = m_mode.data;
+    if (s == "on") {
+      m_running = true;
+      RTC_INFO(("m_running = true"));
+    } else if (s == "off") {
+      m_running = false;
+      RTC_INFO(("m_running = false"));
     } else {
-      aligned_frameset = m_palign->process(frameset);
+      RTC_ERROR(("Unknown mode: %s", s.c_str()));
+      return RTC::RTC_ERROR;
     }
+  }
+  if (m_running) {
+    try {
+      rs2::frameset frameset;
+      if (!m_pipe.poll_for_frames(&frameset)) {
+        return RTC::RTC_OK;
+      }
+      setTimestamp(m_pc);
 
-    rs2::depth_frame depthFrame = aligned_frameset.get_depth_frame();
-    rs2::video_frame colorFrame = aligned_frameset.get_color_frame();
-    rs2::pointcloud pc;
-    pc.map_to(colorFrame);
-    rs2::points points = pc.calculate(depthFrame);
-
-    rs2::video_stream_profile sp = points.get_profile().as<rs2::video_stream_profile>();
-    m_pc.width = static_cast<uint32_t>(sp.width());
-    m_pc.height = static_cast<uint32_t>(sp.height());
-    m_pc.row_step = m_pc.point_step*m_pc.width;
-    m_pc.data.length(m_pc.height*m_pc.row_step);
-
-    const rs2::texture_coordinate *textureCoordinates = points.get_texture_coordinates();
-    const rs2::vertex* vertices = points.get_vertices();
-    int width = colorFrame.get_width();  // Frame width in pixels
-    int height = colorFrame.get_height(); // Frame height in pixels
-    int bytesPerPixel = colorFrame.get_bytes_per_pixel();   // Get # of bytes per pixel
-    int stridesInBytes = colorFrame.get_stride_in_bytes(); // Get line width in bytes
-    const uint8_t* texture = reinterpret_cast<const uint8_t*>(colorFrame.get_data());
-
-    float *dst_cloud = (float *)m_pc.data.get_buffer();
-
-    for (int i = 0; i < points.size(); i++) {
-      //XYZ
-      //座標変換の前にy軸とz軸を入れ替え．
-      Vector3f tmp(vertices[i].x, -vertices[i].y, -vertices[i].z);
-      //座標変換
-      if (m_coordinateTransformation) {
-        tmp = m_transform*tmp;
+      rs2::frameset aligned_frameset;
+      if (m_palign == nullptr) {
+        aligned_frameset = frameset;
+      } else {
+        aligned_frameset = m_palign->process(frameset);
       }
 
-      //RGB
-      rs2::texture_coordinate uv = textureCoordinates[i];
-      int u = min(max(int(uv.u * width + .5f), 0), width - 1);
-      int v = min(max(int(uv.v * height + .5f), 0), height - 1);
-      int index = u*bytesPerPixel + v*stridesInBytes;
-      uint32_t ui = (texture[index + 2] << 16) | (texture[index + 1] << 8) | texture[index];
-      float rgb = *reinterpret_cast<float *>(&ui);
+      rs2::depth_frame depthFrame = aligned_frameset.get_depth_frame();
+      rs2::video_frame colorFrame = aligned_frameset.get_color_frame();
+      rs2::pointcloud pc;
+      pc.map_to(colorFrame);
+      rs2::points points = pc.calculate(depthFrame);
 
-      dst_cloud[0] = tmp(0);
-      dst_cloud[1] = tmp(1);
-      dst_cloud[2] = tmp(2);
-      dst_cloud[3] = rgb;
-      dst_cloud += 4;
+      rs2::video_stream_profile sp = points.get_profile().as<rs2::video_stream_profile>();
+      m_pc.width = static_cast<uint32_t>(sp.width());
+      m_pc.height = static_cast<uint32_t>(sp.height());
+      m_pc.row_step = m_pc.point_step*m_pc.width;
+      m_pc.data.length(m_pc.height*m_pc.row_step);
+
+      const rs2::texture_coordinate *textureCoordinates = points.get_texture_coordinates();
+      const rs2::vertex* vertices = points.get_vertices();
+      int width = colorFrame.get_width();  // Frame width in pixels
+      int height = colorFrame.get_height(); // Frame height in pixels
+      int bytesPerPixel = colorFrame.get_bytes_per_pixel();   // Get # of bytes per pixel
+      int stridesInBytes = colorFrame.get_stride_in_bytes(); // Get line width in bytes
+      const uint8_t* texture = reinterpret_cast<const uint8_t*>(colorFrame.get_data());
+
+      float *dst_cloud = (float *)m_pc.data.get_buffer();
+
+      for (int i = 0; i < points.size(); i++) {
+        //XYZ
+        //座標変換の前にy軸とz軸を入れ替え．
+        Vector3f tmp(vertices[i].x, -vertices[i].y, -vertices[i].z);
+        //座標変換
+        if (m_coordinateTransformation) {
+          tmp = m_transform*tmp;
+        }
+
+        //RGB
+        rs2::texture_coordinate uv = textureCoordinates[i];
+        int u = min(max(int(uv.u * width + .5f), 0), width - 1);
+        int v = min(max(int(uv.v * height + .5f), 0), height - 1);
+        int index = u*bytesPerPixel + v*stridesInBytes;
+        uint32_t ui = (texture[index + 2] << 16) | (texture[index + 1] << 8) | texture[index];
+        float rgb = *reinterpret_cast<float *>(&ui);
+
+        dst_cloud[0] = tmp(0);
+        dst_cloud[1] = tmp(1);
+        dst_cloud[2] = tmp(2);
+        dst_cloud[3] = rgb;
+        dst_cloud += 4;
+      }
+
+      m_pcOut.write();
+
+      m_fpsCounter++;
+      m_steadyEnd = chrono::steady_clock::now();
+      float timeSec = std::chrono::duration<double>(m_steadyEnd - m_steadyStart).count();
+      if (timeSec >= 1) {
+        RTC_INFO(("%f fps", m_fpsCounter / timeSec));
+        m_steadyStart = m_steadyEnd;
+        m_fpsCounter = 0;
+      }
+
     }
-
-    m_pcOut.write();
-
-    m_fpsCounter++;
-    m_steadyEnd = chrono::steady_clock::now();
-    float timeSec = std::chrono::duration<double>(m_steadyEnd - m_steadyStart).count();
-    if (timeSec >= 1) {
-      RTC_INFO(("%f fps", m_fpsCounter / timeSec));
-      m_steadyStart = m_steadyEnd;
-      m_fpsCounter = 0;
+    catch (const rs2::error & e) {
+      RTC_ERROR((("RealSense error calling " + e.get_failed_function() + "(" + e.get_failed_args() + "):").c_str()));
+      RTC_ERROR(("    %s", e.what()));
+      return RTC::RTC_ERROR;
     }
-
-  } catch (const rs2::error & e) {
-    RTC_ERROR((("RealSense error calling " + e.get_failed_function() + "(" + e.get_failed_args() + "):").c_str()));
-    RTC_ERROR(("    %s", e.what()));
-    return RTC::RTC_ERROR;
-  } catch (const std::exception& e) {
-    RTC_ERROR((e.what()));
-    return RTC::RTC_ERROR;
+    catch (const std::exception& e) {
+      RTC_ERROR((e.what()));
+      return RTC::RTC_ERROR;
+    }
   }
 
   return RTC::RTC_OK;

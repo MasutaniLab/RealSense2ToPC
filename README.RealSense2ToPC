@@ -66,6 +66,24 @@ Lang Type:
 ======================================================================
 # <rtc-template block="inport">
 
+	Name:        mode
+	PortNumber:  0
+	Description: 
+	PortType: 
+	DataType:    RTC::TimedString
+	MaxOut: 
+	[Data Elements]
+		Name:
+		Type:            
+		Number:          
+		Semantics:       
+		Unit:            
+		Frequency:       
+		Operation Cycle: 
+		RangeLow:
+		RangeHigh:
+		DefaultValue:
+
 
 # </rtc-template>
 

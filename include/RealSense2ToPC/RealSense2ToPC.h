@@ -21,6 +21,7 @@
 
 // Service Consumer stub headers
 // <rtc-template block="consumer_stub_h">
+#include "BasicDataTypeStub.h"
 #include "pointcloudStub.h"
 
 // </rtc-template>
@@ -286,6 +287,10 @@ class RealSense2ToPC
 
   // DataInPort declaration
   // <rtc-template block="inport_declare">
+  RTC::TimedString m_mode;
+  /*!
+   */
+  InPort<RTC::TimedString> m_modeIn;
   
   // </rtc-template>
 
@@ -329,6 +334,7 @@ class RealSense2ToPC
    std::chrono::steady_clock::time_point m_steadyStart;
    std::chrono::steady_clock::time_point m_steadyEnd;
    rs2::align *m_palign;
+   bool m_running;
 };
 
 
