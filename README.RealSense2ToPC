@@ -66,7 +66,7 @@ Lang Type:
 ======================================================================
 # <rtc-template block="inport">
 
-	Name:        mode
+	Name:        command
 	PortNumber:  0
 	Description: 
 	PortType: 

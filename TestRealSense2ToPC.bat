@@ -10,15 +10,17 @@ if errorlevel 1 (
   rem /bオプションは親を終わらせないために必須
 )
 
+set pythonScript=SetCommand
+
 :コンポーネントの起動
 call ..\RealSense2ToPC\RealSense2ToPC.bat
 call ..\PointCloudViewer\PointCloudViewer.bat
-start "SetMode" .\SetMode.pyw
+start "%pythonScript%" .\%pythonScript%.pyw
 
 :コンポーネント名を変数化
 set s=/localhost/RealSense2ToPC0.rtc
 set v=/localhost/PointCloudViewer0.rtc
-set i=/localhost/SetMode0.rtc
+set i=/localhost/%pythonScript%0.rtc
 
 :コンポーネント起動待ち
 :rtls-s
@@ -35,7 +37,7 @@ if errorlevel 1 goto rtls-i
 
 :接続
 rtcon %s%:pc %v%:pc
-rtcon %i%:mode %s%:mode
+rtcon %i%:command %s%:command
 
 :アクティベート
 rtact %s% %v% %i%
@@ -51,3 +53,5 @@ rtdeact %s% %v% %i%
 rtexit %s%
 rtexit %v%
 rtexit %i%
+
+taskkill /fi "WINDOWTITLE eq %pythonScript%"

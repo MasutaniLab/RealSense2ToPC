@@ -287,10 +287,10 @@ class RealSense2ToPC
 
   // DataInPort declaration
   // <rtc-template block="inport_declare">
-  RTC::TimedString m_mode;
+  RTC::TimedString m_command;
   /*!
    */
-  InPort<RTC::TimedString> m_modeIn;
+  InPort<RTC::TimedString> m_commandIn;
   
   // </rtc-template>
 

@@ -13,8 +13,8 @@ from tkinter import Frame
 from tkinter import Radiobutton
 from tkinter import StringVar
 
-mod_spec = ["implementation_id", "SetMode", 
-            "type_name", "SetMode", 
+mod_spec = ["implementation_id", "SetCommand", 
+            "type_name", "SetCommand", 
             "description", "", 
             "version", "1.0", 
             "vendor", "MasutaniLab", 
@@ -34,17 +34,17 @@ class RadioButton(Frame):
     Radiobutton(self, 
                 indicatoron = False,
                 width = 20,
-                text = 'ON', 
+                text = 'START', 
                 variable = self.var, 
-                value = 'on', 
+                value = 'start', 
                 command = self.buttonCommand
                 ).pack()
     Radiobutton(self, 
                 indicatoron = False,
                 width = 20,
-                text = 'OFF', 
+                text = 'STOP', 
                 variable = self.var, 
-                value = 'off', 
+                value = 'stop', 
                 command = self.buttonCommand
                 ).pack()
     self.master.title(title)
@@ -71,20 +71,20 @@ class RadioButton(Frame):
   def get(self):
     return self.var.get()
 
-rb = RadioButton(title = "SetMode")
+rb = RadioButton(title = "SetCommand")
 
 
-class SetMode(OpenRTM_aist.DataFlowComponentBase):
+class SetCommand(OpenRTM_aist.DataFlowComponentBase):
   def __init__(self, manager):
     OpenRTM_aist.DataFlowComponentBase.__init__(self, manager)
-    self._d_mode = RTC.TimedString(RTC.Time(0,0), "")
-    self._modeOut = OpenRTM_aist.OutPort("mode", self._d_mode)
-    self.log = OpenRTM_aist.Manager.instance().getLogbuf("SetMode")
+    self._d_command = RTC.TimedString(RTC.Time(0,0), "")
+    self._commandOut = OpenRTM_aist.OutPort("command", self._d_command)
+    self.log = OpenRTM_aist.Manager.instance().getLogbuf("SetCommand")
     return   
 
   def onInitialize(self):
     self.log.RTC_INFO("onInitialize()")
-    self.addOutPort("mode",self._modeOut)
+    self.addOutPort("command",self._commandOut)
     return RTC.RTC_OK
 
   def onActivated(self, ec_id):
@@ -98,9 +98,9 @@ class SetMode(OpenRTM_aist.DataFlowComponentBase):
   def onExecute(self, ec_id):
     try:
       if (rb.buttonNew()):
-        self._d_mode.data = rb.get()
-        self.log.RTC_INFO("mode: " + str(self._d_mode.data))
-        self._modeOut.write()
+        self._d_command.data = rb.get()
+        self.log.RTC_INFO("command: " + str(self._d_command.data))
+        self._commandOut.write()
     except Exception as e:
       self.log.RTC_ERROR("Exception cought in onExecute(): " + str(e))
     return RTC.RTC_OK
@@ -110,16 +110,16 @@ class SetMode(OpenRTM_aist.DataFlowComponentBase):
     rb.quit()
     return RTC.RTC_OK
 
-def SetModeInit(manager):
+def SetCommandInit(manager):
   profile = OpenRTM_aist.Properties(defaults_str=mod_spec)
   manager.registerFactory(profile,
-                          SetMode,
+                          SetCommand,
                           OpenRTM_aist.Delete)
 
 def MyModuleInit(manager):
-  SetModeInit(manager)
+  SetCommandInit(manager)
   # Create a component
-  comp = manager.createComponent("SetMode")
+  comp = manager.createComponent("SetCommand")
 
 def main():
   # Initialize manager

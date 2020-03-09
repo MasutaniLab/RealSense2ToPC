@@ -75,7 +75,7 @@ static const char* realsense2topc_spec[] =
 RealSense2ToPC::RealSense2ToPC(RTC::Manager* manager)
     // <rtc-template block="initializer">
   : RTC::DataFlowComponentBase(manager),
-    m_modeIn("mode", m_mode),
+    m_commandIn("command", m_command),
     m_pcOut("pc", m_pc)
 
     // </rtc-template>
@@ -97,7 +97,7 @@ RTC::ReturnCode_t RealSense2ToPC::onInitialize()
   // Registration: InPort/OutPort/Service
   // <rtc-template block="registration">
   // Set InPort buffers
-  addInPort("mode", m_modeIn);
+  addInPort("command", m_commandIn);
   
   // Set OutPort buffer
   addOutPort("pc", m_pcOut);
@@ -245,17 +245,17 @@ RTC::ReturnCode_t RealSense2ToPC::onDeactivated(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
 {
-  if (m_modeIn.isNew()) {
-    m_modeIn.read();
-    string s = m_mode.data;
-    if (s == "on") {
+  if (m_commandIn.isNew()) {
+    m_commandIn.read();
+    string s = m_command.data;
+    if (s == "start") {
       m_running = true;
       RTC_INFO(("m_running = true"));
-    } else if (s == "off") {
+    } else if (s == "stop") {
       m_running = false;
       RTC_INFO(("m_running = false"));
     } else {
-      RTC_ERROR(("Unknown mode: %s", s.c_str()));
+      RTC_ERROR(("未知のコマンド: %s", s.c_str()));
       return RTC::RTC_ERROR;
     }
   }

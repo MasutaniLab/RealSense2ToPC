@@ -116,7 +116,7 @@ depthResolution  string             640x480
 =============== =========== ============================== ====
 ポート名        ポート型    データ型                       意味
 =============== =========== ============================== ====
-mode            InPort      RTC::TimedString               
+command         InPort      RTC::TimedString               
 pc              OutPort     PointCloudTypes::PointCloud    
 =============== =========== ============================== ====
 
