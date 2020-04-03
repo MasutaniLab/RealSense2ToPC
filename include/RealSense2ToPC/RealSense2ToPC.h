@@ -1,4 +1,4 @@
-// -*- C++ -*-
+﻿// -*- C++ -*-
 /*!
  * @file  RealSense2ToPC.h
  * @brief Point Cloud Grabber RTC Using Intel RealSense SDK 2 
@@ -21,6 +21,7 @@
 
 // Service Consumer stub headers
 // <rtc-template block="consumer_stub_h">
+#include "BasicDataTypeStub.h"
 #include "pointcloudStub.h"
 
 // </rtc-template>
@@ -36,21 +37,10 @@ using namespace PointCloudTypes;
 #include <rtm/DataInPort.h>
 #include <rtm/DataOutPort.h>
 
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
-
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/io/grabber.h>
-#include <pcl/common/time.h>
-#include <pcl/io/io_exception.h>
-#include <pcl/common/transforms.h>
-
-#include "real_sense_2_grabber.h"
+#include <Eigen/Geometry>
+#include <librealsense2/rs.hpp>
 
 using namespace RTC;
-
-typedef pcl::PointXYZRGBA PointT;
 
 /*!
  * @class RealSense2ToPC
@@ -280,11 +270,27 @@ class RealSense2ToPC
    * - DefaultValue: 0.0
    */
   double m_rotZ;
+  /*!
+   * 
+   * - Name:  colorResolution
+   * - DefaultValue: 640x480
+   */
+  std::string m_colorResolution;
+  /*!
+   * 
+   * - Name:  depthResolution
+   * - DefaultValue: 640x480
+   */
+  std::string m_depthResolution;
 
   // </rtc-template>
 
   // DataInPort declaration
   // <rtc-template block="inport_declare">
+  RTC::TimedString m_command;
+  /*!
+   */
+  InPort<RTC::TimedString> m_commandIn;
   
   // </rtc-template>
 
@@ -321,13 +327,14 @@ class RealSense2ToPC
   // <rtc-template block="private_operation">
   
   // </rtc-template>
-
-  pcl::PointCloud<PointT>::ConstPtr m_cloud;
-  boost::mutex m_mutex;
-  bool m_new;
-  boost::shared_ptr<pcl::RealSense2Grabber> m_interface;
-  void cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloud);
-  Eigen::Affine3f m_transform;
+   rs2::pipeline m_pipe;
+   bool m_coordinateTransformation;
+   Eigen::Affine3f m_transform;
+   int m_fpsCounter;
+   std::chrono::steady_clock::time_point m_steadyStart;
+   std::chrono::steady_clock::time_point m_steadyEnd;
+   rs2::align *m_palign;
+   bool m_running;
 };
 
 

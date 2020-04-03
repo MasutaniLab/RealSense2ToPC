@@ -1,4 +1,4 @@
-// -*- C++ -*-
+﻿// -*- C++ -*-
 /*!
  * @file  RealSense2ToPC.cpp
  * @brief Point Cloud Grabber RTC Using Intel RealSense SDK 2 
@@ -7,6 +7,7 @@
  * $Id$
  */
 
+#define _USE_MATH_DEFINES
 #include "RealSense2ToPC.h"
 #include <iostream>
 #include <string>
@@ -14,6 +15,7 @@
 using namespace std;
 using namespace Eigen;
 
+#define print(x) cout << #x " = " << x << endl
 
 // Module specification
 // <rtc-template block="module_spec">
@@ -37,6 +39,8 @@ static const char* realsense2topc_spec[] =
     "conf.default.rotX", "0.0",
     "conf.default.rotY", "0.0",
     "conf.default.rotZ", "0.0",
+    "conf.default.colorResolution", "640x480",
+    "conf.default.depthResolution", "640x480",
 
     // Widget
     "conf.__widget__.transX", "text",
@@ -45,7 +49,11 @@ static const char* realsense2topc_spec[] =
     "conf.__widget__.rotX", "text",
     "conf.__widget__.rotY", "text",
     "conf.__widget__.rotZ", "text",
+    "conf.__widget__.colorResolution", "radio",
+    "conf.__widget__.depthResolution", "radio",
     // Constraints
+    "conf.__constraints__.colorResolution", "(320x180,320x240,424x240,640x360,640x480,848x480,960x540,1280x720,1920x1080)",
+    "conf.__constraints__.depthResolution", "(424x240,480x270,640x360,640x400,640x480,848x480,1280x720,1280x800)",
 
     "conf.__type__.transX", "double",
     "conf.__type__.transY", "double",
@@ -53,6 +61,8 @@ static const char* realsense2topc_spec[] =
     "conf.__type__.rotX", "double",
     "conf.__type__.rotY", "double",
     "conf.__type__.rotZ", "double",
+    "conf.__type__.colorResolution", "string",
+    "conf.__type__.depthResolution", "string",
 
     ""
   };
@@ -65,6 +75,7 @@ static const char* realsense2topc_spec[] =
 RealSense2ToPC::RealSense2ToPC(RTC::Manager* manager)
     // <rtc-template block="initializer">
   : RTC::DataFlowComponentBase(manager),
+    m_commandIn("command", m_command),
     m_pcOut("pc", m_pc)
 
     // </rtc-template>
@@ -86,6 +97,7 @@ RTC::ReturnCode_t RealSense2ToPC::onInitialize()
   // Registration: InPort/OutPort/Service
   // <rtc-template block="registration">
   // Set InPort buffers
+  addInPort("command", m_commandIn);
   
   // Set OutPort buffer
   addOutPort("pc", m_pcOut);
@@ -106,6 +118,8 @@ RTC::ReturnCode_t RealSense2ToPC::onInitialize()
   bindParameter("rotX", m_rotX, "0.0");
   bindParameter("rotY", m_rotY, "0.0");
   bindParameter("rotZ", m_rotZ, "0.0");
+  bindParameter("colorResolution", m_colorResolution, "640x480");
+  bindParameter("depthResolution", m_depthResolution, "640x480");
   // </rtc-template>
   
   return RTC::RTC_OK;
@@ -136,18 +150,43 @@ RTC::ReturnCode_t RealSense2ToPC::onShutdown(RTC::UniqueId ec_id)
 RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
 {
   RTC_INFO(("onActivated()"));
-  double radX = m_rotX*M_PI / 180;
-  double radY = m_rotY*M_PI / 180;
-  double radZ = m_rotZ*M_PI / 180;
-  m_transform
-    = Translation3f(m_transX, m_transY, m_transZ)
-    *AngleAxisf(radZ, Vector3f::UnitZ())
-    *AngleAxisf(radY, Vector3f::UnitY())
-    *AngleAxisf(radX+M_PI, Vector3f::UnitX());
-  cout << "m_transform:" << endl << m_transform.matrix() << endl;
+  if (m_rotX == 0 && m_rotY == 0 && m_rotZ == 0 && m_transX == 0 && m_transY == 0 && m_transZ == 0) {
+    m_coordinateTransformation = false;
+  } else {
+    m_coordinateTransformation = true;
+    double radX = m_rotX*M_PI / 180;
+    double radY = m_rotY*M_PI / 180;
+    double radZ = m_rotZ*M_PI / 180;
+    m_transform
+      = Translation3f(m_transX, m_transY, m_transZ)
+      *AngleAxisf(radZ, Vector3f::UnitZ())
+      *AngleAxisf(radY, Vector3f::UnitY())
+      *AngleAxisf(radX, Vector3f::UnitX());
+    cout << "m_transform:" << endl << m_transform.matrix() << endl;
+  }
 
   try {
-    m_interface = boost::make_shared<pcl::RealSense2Grabber>();
+    char dummy;
+    istringstream isc(m_colorResolution);
+    int wc, hc;
+    isc >> wc >> dummy >> hc;
+    istringstream isd(m_depthResolution);
+    int wd, hd;
+    isd >> wd >> dummy >> hd;
+    RTC_INFO(("wc: %d, hc: %d, wd: %d, hd: %d", wc, hc, wd, hd));
+
+    rs2::config cfg;
+    cfg.enable_stream(RS2_STREAM_COLOR, wc, hc, RS2_FORMAT_BGR8, 30);
+    cfg.enable_stream(RS2_STREAM_DEPTH, wd, hd, RS2_FORMAT_Z16, 30);
+
+    rs2::pipeline_profile profile = m_pipe.start(cfg);
+
+    if (wc == wd && hc == hd) {
+      m_palign = nullptr;
+    } else {
+      m_palign = new rs2::align(RS2_STREAM_DEPTH);
+    }
+
     m_pc.type = "xyzrgb";
     m_pc.fields.length(6);
     m_pc.fields[0].name = "x";
@@ -177,17 +216,21 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
     m_pc.is_bigendian = false;
     m_pc.point_step = 16;
     m_pc.is_dense = false;
-    m_new = false;
-    boost::function<void(const pcl::PointCloud<PointT>::ConstPtr&)> f = boost::bind(&RealSense2ToPC::cloud_cb, this, _1);
-    m_interface->registerCallback(f);
-    m_interface->start();
-  } catch (exception& e) {
-    RTC_ERROR(("Failed to create a grabber: %s", e.what()));
+    m_steadyStart = chrono::steady_clock::now();
+    m_fpsCounter = 0;
+    m_running = true;
+  } catch (const rs2::error & e) {
+    RTC_ERROR((("RealSense error calling " + e.get_failed_function() + "(" + e.get_failed_args() + "):").c_str()));
+    RTC_ERROR(("    %s", e.what()));
+    return RTC::RTC_ERROR;
+  } catch (const std::exception& e) {
+    RTC_ERROR((e.what()));
     return RTC::RTC_ERROR;
   } catch (...) {
-    RTC_ERROR(("An exception occurred while starting grabber"));
+    RTC_ERROR(("An exception occurred in onActivated()"));
     return RTC::RTC_ERROR;
   }
+  RTC_INFO(("onActivated() done"));
   return RTC::RTC_OK;
 }
 
@@ -195,47 +238,111 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
 RTC::ReturnCode_t RealSense2ToPC::onDeactivated(RTC::UniqueId ec_id)
 {
   RTC_INFO(("onDeactivated()"));
-  m_interface->stop();
-  m_interface.reset();
-
+  m_pipe.stop();
+  delete m_palign;
   return RTC::RTC_OK;
 }
 
 RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
 {
-  boost::mutex::scoped_try_lock lock(m_mutex);
-  if (lock.owns_lock() && m_new) {
-    m_new = false;
-    pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>());
-    pcl::transformPointCloud(*m_cloud, *cloud, m_transform);
-    setTimestamp(m_pc);
-    m_pc.width = cloud->width;
-    m_pc.height = cloud->height;
-    m_pc.row_step = m_pc.point_step*m_pc.width;
-    m_pc.data.length(m_pc.height*m_pc.row_step);
-    float *dst_cloud = (float *)m_pc.data.get_buffer();
-    for (unsigned int i = 0; i<cloud->points.size(); i++) {
-      dst_cloud[0] = cloud->points[i].x;
-      dst_cloud[1] = cloud->points[i].y;
-      dst_cloud[2] = cloud->points[i].z;
-      dst_cloud[3] = -cloud->points[i].rgb;
-      dst_cloud += 4;
-    }
-    m_pcOut.write();
-
-    static int count = 0;
-    static double last = 0;
-
-    if (++count == 30)
-    {
-      double now = pcl::getTime();
-#if 1
-      RTC_INFO(("Average framerate: %lf Hz", double(count) / double(now - last)));
-#endif
-      count = 0;
-      last = now;
+  if (m_commandIn.isNew()) {
+    m_commandIn.read();
+    string s = m_command.data;
+    if (s == "start") {
+      m_running = true;
+      RTC_INFO(("m_running = true"));
+    } else if (s == "stop") {
+      m_running = false;
+      RTC_INFO(("m_running = false"));
+    } else {
+      RTC_ERROR(("未知のコマンド: %s", s.c_str()));
+      return RTC::RTC_ERROR;
     }
   }
+  if (m_running) {
+    try {
+      rs2::frameset frameset;
+      if (!m_pipe.poll_for_frames(&frameset)) {
+        return RTC::RTC_OK;
+      }
+      setTimestamp(m_pc);
+
+      rs2::frameset aligned_frameset;
+      if (m_palign == nullptr) {
+        aligned_frameset = frameset;
+      } else {
+        aligned_frameset = m_palign->process(frameset);
+      }
+
+      rs2::depth_frame depthFrame = aligned_frameset.get_depth_frame();
+      rs2::video_frame colorFrame = aligned_frameset.get_color_frame();
+      rs2::pointcloud pc;
+      pc.map_to(colorFrame);
+      rs2::points points = pc.calculate(depthFrame);
+
+      rs2::video_stream_profile sp = points.get_profile().as<rs2::video_stream_profile>();
+      m_pc.width = static_cast<uint32_t>(sp.width());
+      m_pc.height = static_cast<uint32_t>(sp.height());
+      m_pc.row_step = m_pc.point_step*m_pc.width;
+      m_pc.data.length(m_pc.height*m_pc.row_step);
+
+      const rs2::texture_coordinate *textureCoordinates = points.get_texture_coordinates();
+      const rs2::vertex* vertices = points.get_vertices();
+      int width = colorFrame.get_width();  // Frame width in pixels
+      int height = colorFrame.get_height(); // Frame height in pixels
+      int bytesPerPixel = colorFrame.get_bytes_per_pixel();   // Get # of bytes per pixel
+      int stridesInBytes = colorFrame.get_stride_in_bytes(); // Get line width in bytes
+      const uint8_t* texture = reinterpret_cast<const uint8_t*>(colorFrame.get_data());
+
+      float *dst_cloud = (float *)m_pc.data.get_buffer();
+
+      for (int i = 0; i < points.size(); i++) {
+        //XYZ
+        //座標変換の前にy軸とz軸を入れ替え．
+        Vector3f tmp(vertices[i].x, -vertices[i].y, -vertices[i].z);
+        //座標変換
+        if (m_coordinateTransformation) {
+          tmp = m_transform*tmp;
+        }
+
+        //RGB
+        rs2::texture_coordinate uv = textureCoordinates[i];
+        int u = min(max(int(uv.u * width + .5f), 0), width - 1);
+        int v = min(max(int(uv.v * height + .5f), 0), height - 1);
+        int index = u*bytesPerPixel + v*stridesInBytes;
+        uint32_t ui = (texture[index + 2] << 16) | (texture[index + 1] << 8) | texture[index];
+        float rgb = *reinterpret_cast<float *>(&ui);
+
+        dst_cloud[0] = tmp(0);
+        dst_cloud[1] = tmp(1);
+        dst_cloud[2] = tmp(2);
+        dst_cloud[3] = rgb;
+        dst_cloud += 4;
+      }
+
+      m_pcOut.write();
+
+      m_fpsCounter++;
+      m_steadyEnd = chrono::steady_clock::now();
+      float timeSec = std::chrono::duration<double>(m_steadyEnd - m_steadyStart).count();
+      if (timeSec >= 1) {
+        RTC_INFO(("%f fps", m_fpsCounter / timeSec));
+        m_steadyStart = m_steadyEnd;
+        m_fpsCounter = 0;
+      }
+
+    }
+    catch (const rs2::error & e) {
+      RTC_ERROR((("RealSense error calling " + e.get_failed_function() + "(" + e.get_failed_args() + "):").c_str()));
+      RTC_ERROR(("    %s", e.what()));
+      return RTC::RTC_ERROR;
+    }
+    catch (const std::exception& e) {
+      RTC_ERROR((e.what()));
+      return RTC::RTC_ERROR;
+    }
+  }
+
   return RTC::RTC_OK;
 }
 
@@ -273,13 +380,6 @@ RTC::ReturnCode_t RealSense2ToPC::onRateChanged(RTC::UniqueId ec_id)
   return RTC::RTC_OK;
 }
 */
-
-void RealSense2ToPC::cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &ptr)
-{
-  boost::mutex::scoped_lock lock(m_mutex);
-  m_cloud = ptr->makeShared();
-  m_new = true;
-}
 
 extern "C"
 {

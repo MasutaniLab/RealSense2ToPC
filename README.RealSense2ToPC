@@ -1,4 +1,4 @@
-======================================================================
+﻿======================================================================
   RTComponent: RealSense2ToPC specificatioin
 
   OpenRTM-aist-1.0.0
@@ -10,7 +10,7 @@
 #   --module-desc='Point Cloud Grabber RTC Using Intel RealSense SDK 2 ' --module-version=1.0.0 --module-vendor=MasutaniLab 
 #   --module-category=PointCloud --module-comp-type=STATIC 
 #   --module-act-type=PERIODIC --module-max-inst=1 
-#   --config=transX:double:0.0 --config=transY:double:0.0 --config=transZ:double:0.0 --config=rotX:double:0.0 --config=rotY:double:0.0 --config=rotZ:double:0.0 
+#   --config=transX:double:0.0 --config=transY:double:0.0 --config=transZ:double:0.0 --config=rotX:double:0.0 --config=rotY:double:0.0 --config=rotZ:double:0.0 --config=colorResolution:string:640x480 --config=depthResolution:string:640x480 
 #   --outport=pc:PointCloudTypes::PointCloud 
 
 
@@ -65,6 +65,24 @@ Lang Type:
     InPorts definition
 ======================================================================
 # <rtc-template block="inport">
+
+	Name:        command
+	PortNumber:  0
+	Description: 
+	PortType: 
+	DataType:    RTC::TimedString
+	MaxOut: 
+	[Data Elements]
+		Name:
+		Type:            
+		Number:          
+		Semantics:       
+		Unit:            
+		Frequency:       
+		Operation Cycle: 
+		RangeLow:
+		RangeHigh:
+		DefaultValue:
 
 
 # </rtc-template>
@@ -151,6 +169,22 @@ Lang Type:
 		Description:     
 		Type:            double
 		DefaultValue:     0.0
+		Unit:            
+		Range:           
+		Constraint:      
+
+		Name:             colorResolution
+		Description:     
+		Type:            string
+		DefaultValue:     640x480
+		Unit:            
+		Range:           
+		Constraint:      
+
+		Name:             depthResolution
+		Description:     
+		Type:            string
+		DefaultValue:     640x480
 		Unit:            
 		Range:           
 		Constraint:      
