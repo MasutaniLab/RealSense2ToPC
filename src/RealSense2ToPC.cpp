@@ -247,7 +247,7 @@ RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
 {
   if (m_commandIn.isNew()) {
     m_commandIn.read();
-    string s = m_command.data;
+    string s(m_command.data);
     if (s == "start") {
       m_running = true;
       RTC_INFO(("m_running = true"));

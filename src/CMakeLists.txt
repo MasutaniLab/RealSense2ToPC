@@ -3,9 +3,13 @@ set(standalone_srcs RealSense2ToPCComp.cpp)
 
 set(CMAKE_MODULE_PATH 
   "${CMAKE_SOURCE_DIR}/cmake/Modules/" ${CMAKE_MODULE_PATH})
-find_package(REALSENSE2 REQUIRED)
+find_package(RealSense2 REQUIRED)
 
-set(EIGEN_DIR "$ENV{PCL_ROOT}/3rdParty/Eigen/eigen3" CACHE PATH "Directory of Eigen")
+if (Windows)
+  set(EIGEN_DIR "$ENV{PCL_ROOT}/3rdParty/Eigen/eigen3" CACHE PATH "Directory of Eigen")
+elseif(UNIX)
+  set(EIGEN_DIR "/usr/include/eigen3" CACHE PATH "Directory of Eigen")
+endif()
 
 if(${OPENRTM_VERSION_MAJOR} LESS 2)
   set(OPENRTM_CFLAGS ${OPENRTM_CFLAGS} ${OMNIORB_CFLAGS})
