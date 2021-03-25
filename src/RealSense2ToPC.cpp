@@ -296,7 +296,7 @@ RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
 
       float *dst_cloud = (float *)m_pc.data.get_buffer();
 
-      for (int i = 0; i < points.size(); i++) {
+      for (size_t i = 0; i < points.size(); i++) {
         //XYZ
         //座標変換の前にy軸とz軸を入れ替え．
         Vector3f tmp(vertices[i].x, -vertices[i].y, -vertices[i].z);
@@ -310,13 +310,23 @@ RTC::ReturnCode_t RealSense2ToPC::onExecute(RTC::UniqueId ec_id)
         int u = min(max(int(uv.u * width + .5f), 0), width - 1);
         int v = min(max(int(uv.v * height + .5f), 0), height - 1);
         int index = u*bytesPerPixel + v*stridesInBytes;
-        uint32_t ui = (texture[index + 2] << 16) | (texture[index + 1] << 8) | texture[index];
-        float rgb = *reinterpret_cast<float *>(&ui);
+        union {
+          struct {
+            uint8_t r;
+            uint8_t g;
+            uint8_t b;
+            uint8_t dummy;
+          };
+          float rgb;
+        } urgb;
+        urgb.r = texture[index];
+        urgb.g = texture[index + 1];
+        urgb.b = texture[index + 2];
 
         dst_cloud[0] = tmp(0);
         dst_cloud[1] = tmp(1);
         dst_cloud[2] = tmp(2);
-        dst_cloud[3] = rgb;
+        dst_cloud[3] = urgb.rgb;
         dst_cloud += 4;
       }
 

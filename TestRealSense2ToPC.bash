@@ -24,17 +24,17 @@ ${python} ./${pythonScript}.pyw > /dev/null 2>&1 &
 #コンポーネント名を変数化
 s=/localhost/RealSense2ToPC0.rtc
 v=/localhost/PointCloudViewer0.rtc
-c=/localhost/${pythonScript}0.rtc
-rtcs=(${s} ${v} ${c})
+i=/localhost/${pythonScript}0.rtc
+rtcs=(${s} ${v} ${i})
 
 #コンポーネント起動待ち
-for i in ${rtcs[*]}
+for c in ${rtcs[*]}
 do
   while :
   do
-    echo "${i}の起動待ち"
+    echo "${c}の起動待ち"
     sleep 1
-    rtls ${i} > /dev/null 2>&1
+    rtls ${c} > /dev/null 2>&1
     if [ $? -eq 0 ]
     then
       break
@@ -44,7 +44,7 @@ done
 
 #接続
 rtcon ${s}:pc ${v}:pc
-rtcon ${c}:command ${s}:command
+rtcon ${i}:command ${s}:command
 
 #アクティベート
 rtact ${rtcs[*]}
@@ -62,9 +62,9 @@ done
 rtdeact ${rtcs[*]}
 
 #終了（rtexitは，引数を一つずつ）
-for i in ${rtcs[*]}
+for c in ${rtcs[*]}
 do
-  rtexit ${i}
+  rtexit ${c}
 done
 
 pkill -f ./${pythonScript}.pyw

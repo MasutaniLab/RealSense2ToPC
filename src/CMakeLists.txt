@@ -9,6 +9,8 @@ if (WIN32)
   set(EIGEN_DIR "$ENV{PCL_ROOT}/3rdParty/Eigen/eigen3" CACHE PATH "Directory of Eigen")
 elseif(UNIX)
   set(EIGEN_DIR "/usr/include/eigen3" CACHE PATH "Directory of Eigen")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated")
+  #warning: dynamic exception specifications are deprecated in C++11 が大量に出るのを避けるため
 endif()
 
 if(${OPENRTM_VERSION_MAJOR} LESS 2)
