@@ -176,7 +176,7 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
     RTC_INFO(("wc: %d, hc: %d, wd: %d, hd: %d", wc, hc, wd, hd));
 
     rs2::config cfg;
-    cfg.enable_stream(RS2_STREAM_COLOR, wc, hc, RS2_FORMAT_BGR8, 30);
+    cfg.enable_stream(RS2_STREAM_COLOR, wc, hc, RS2_FORMAT_RGB8, 30);
     cfg.enable_stream(RS2_STREAM_DEPTH, wd, hd, RS2_FORMAT_Z16, 30);
 
     rs2::pipeline_profile profile = m_pipe.start(cfg);
@@ -201,7 +201,7 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
     m_pc.fields[2].offset = 8;
     m_pc.fields[2].data_type = PointCloudTypes::FLOAT32;
     m_pc.fields[2].count = 4;
-    m_pc.fields[3].name = "b";
+    m_pc.fields[3].name = "r";
     m_pc.fields[3].offset = 12;
     m_pc.fields[3].data_type = PointCloudTypes::UINT8;
     m_pc.fields[3].count = 1;
@@ -209,7 +209,7 @@ RTC::ReturnCode_t RealSense2ToPC::onActivated(RTC::UniqueId ec_id)
     m_pc.fields[4].offset = 13;
     m_pc.fields[4].data_type = PointCloudTypes::UINT8;
     m_pc.fields[4].count = 1;
-    m_pc.fields[5].name = "r";
+    m_pc.fields[5].name = "b";
     m_pc.fields[5].offset = 14;
     m_pc.fields[5].data_type = PointCloudTypes::UINT8;
     m_pc.fields[5].count = 1;

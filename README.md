@@ -2,7 +2,7 @@
 
 大阪電気通信大学  
 升谷 保博  
-2020年2月16日（PCLなし・画素数可変バージョン）
+2021年3月25日（色の順をBGRからRGBへ変更）
 
 ## はじめに
 
@@ -10,8 +10,8 @@
 出力するRTコンポーネントです．RealSense SDK 2を使っており，D400シリーズで動作します．R200には対応していません．
 - 以下の環境で開発，動作確認しています．
   - Windows 10 64bit版
-  - Visual Studio 2015 x64
-  - OpenRTM-aist 1.2.0 64bit版
+  - Visual Studio 2019 x64
+  - OpenRTM-aist 1.2.2 64bit版
   - [Intel® RealSense™ SDK 2.0](https://github.com/IntelRealSense/librealsense/)
 - CMakeでRealSense SDKを見つけるモジュール[`cmake/Modules/FindRealSense2.cmake`](cmake/Modules/FindRealSense2.cmake)は，
 [INRIA Rennes Bretagne Atlantique](https://github.com/lagadic)の[vispに付属のもの](https://github.com/lagadic/visp/blob/master/cmake/FindRealSense2.cmake)を真似して作りました．
