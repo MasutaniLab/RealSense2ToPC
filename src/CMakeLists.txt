@@ -5,7 +5,7 @@ set(CMAKE_MODULE_PATH
   "${CMAKE_SOURCE_DIR}/cmake/Modules/" ${CMAKE_MODULE_PATH})
 find_package(RealSense2 REQUIRED)
 
-if (Windows)
+if (WIN32)
   set(EIGEN_DIR "$ENV{PCL_ROOT}/3rdParty/Eigen/eigen3" CACHE PATH "Directory of Eigen")
 elseif(UNIX)
   set(EIGEN_DIR "/usr/include/eigen3" CACHE PATH "Directory of Eigen")
