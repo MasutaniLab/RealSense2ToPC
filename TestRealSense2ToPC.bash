@@ -1,6 +1,9 @@
 #!/bin/bash
 #RealSense2ToPCのテスト
 
+#スクリプトのあるディレクトリへ移動
+cd `dirname $0 `
+
 #ネーミングサービスの確認
 rtls /localhost > /dev/null
 if [ $? -ne 0 ] 
