@@ -43,7 +43,7 @@ rtcon %i%:command %s%:command
 rtact %s% %v% %i%
 
 :loop
-set /p ans="終了しますか？ (y/n)"
+set /p ans="終了しますか？ (y/n): "
 if not "%ans%"=="y" goto loop
 
 :ディアクティベート
