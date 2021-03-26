@@ -10,10 +10,12 @@ if errorlevel 1 (
   rem /bオプションは親を終わらせないために必須
 )
 
+cd %~dp0
+
 set pythonScript=SetCommand
 
 :コンポーネントの起動
-call ..\RealSense2ToPC\RealSense2ToPC.bat
+call .\RealSense2ToPC.bat
 call ..\PointCloudViewer\PointCloudViewer.bat
 start "%pythonScript%" .\%pythonScript%.pyw
 
@@ -28,6 +30,12 @@ echo %s%の起動待ち
 timeout 1 /nobreak > nul
 rtls %s% > nul 2>&1
 if errorlevel 1 goto rtls-s
+
+:rtls-v
+echo %v%の起動待ち
+timeout 1 /nobreak > nul
+rtls %v% > nul 2>&1
+if errorlevel 1 goto rtls-v
 
 :rtls-i
 echo %i%の起動待ち
